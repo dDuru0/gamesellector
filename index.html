@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dünya Partisi - Oyun Gecesi</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{--bg1:#060919;--bg2:#12183c;--ink:#f3f1ff;--mute:#a9a6d6;--card:rgba(255,255,255,.07);--line:rgba(255,255,255,.16);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;background:radial-gradient(ellipse at 20% 0%,var(--bg2),var(--bg1) 70%) fixed;overflow-x:hidden}
+main{max-width:1100px;margin:0 auto;padding:18px 14px 50px}
+h1{font-size:clamp(26px,6vw,44px);margin:6px 0 2px;text-align:center;text-shadow:0 0 20px rgba(255,212,59,.3)}
+.sub{text-align:center;color:var(--mute);margin:0 0 16px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;max-width:520px;margin:0 auto 16px;backdrop-filter:blur(10px)}
+.panel h2{margin:0 0 10px;font-size:18px;text-align:center}
+input{width:100%;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--ink);padding:12px;font:inherit;font-size:18px;margin-bottom:10px;text-align:center}
+input:focus,button:focus-visible{outline:3px solid #ffd43b;outline-offset:2px}
+button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:12px 22px;cursor:pointer;color:#1a1033;background:linear-gradient(135deg,#ffd43b,#ff922b);box-shadow:0 6px 18px rgba(255,146,43,.35);transition:transform .15s,filter .15s}
+button:hover{transform:translateY(-2px);filter:brightness(1.1)}
+button:disabled{opacity:.4;cursor:not-allowed;transform:none;filter:none}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);box-shadow:none}
+.hide{display:none!important}
+.msg{text-align:center;color:#ffa8a8;margin:8px 0}
+.home{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;max-width:640px;margin:20px auto}
+.choice{display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 18px;border-radius:26px;color:var(--ink);background:var(--card);border:2px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:20px;cursor:pointer;transition:all .3s}
+.choice span{font-size:54px}
+.choice small{font-weight:400;font-size:14px;color:var(--mute)}
+.choice:hover{border-color:#ffd43b;box-shadow:0 0 35px rgba(255,212,59,.4);transform:translateY(-4px)}
+.code{font-size:clamp(44px,12vw,80px);letter-spacing:.2em;font-weight:900;text-align:center;color:#ffd43b;text-shadow:0 0 30px rgba(255,212,59,.5);margin:4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0;min-height:30px}
+.chip{padding:6px 14px;border-radius:999px;background:rgba(255,255,255,.14);font-size:14px;animation:drop .4s cubic-bezier(.2,1.4,.4,1) both}
+.chip.done{background:var(--c);color:#1a1033;font-weight:700}
+@keyframes drop{from{opacity:0;transform:translateY(-30px) scale(.3)}}
+.row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.me{text-align:center;font-size:clamp(18px,4vw,26px);font-weight:800;margin:10px 0;padding:12px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+
+/* Dünya Animasyon Sahnesi */
+.stage{border-radius:30px;overflow:hidden;border:2px solid var(--line);box-shadow:0 0 50px rgba(77,171,247,.2);background:#020617;position:relative;margin-bottom:20px}
+.stage svg{display:block;width:100%;height:auto;max-height:480px}
+.continent-group{transition:filter .3s,transform .3s;cursor:pointer}
+.continent-group:hover{filter:brightness(1.3)}
+.continent-label{font-weight:900;font-size:18px;fill:#fff;text-anchor:middle;paint-order:stroke;stroke:#000;stroke-width:4px}
+
+/* Kıta Kartları Izgarası */
+.world-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:20px}
+.continent-card{border-radius:22px;padding:18px;border:2px solid var(--c);background:color-mix(in srgb,var(--c) 12%,transparent);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.continent-card h3{margin:0 0 8px;font-size:20px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
+.game-badge{font-size:13px;padding:3px 10px;border-radius:20px;background:rgba(0,0,0,.4);border:1px solid var(--c);color:#fff;font-weight:normal}
+
+/* Eşleşme Alanı */
+.matches-box{margin-top:14px;background:rgba(0,0,0,.3);border-radius:14px;padding:10px;border:1px solid rgba(255,255,255,.1)}
+.match-item{display:flex;align-items:center;justify-content:between;background:rgba(255,255,255,.07);margin:6px 0;padding:8px 12px;border-radius:10px;font-weight:700;font-size:15px;gap:8px}
+.match-item span.vs{font-size:12px;color:var(--mute);background:rgba(0,0,0,.4);padding:2px 6px;border-radius:6px}
+
+/* Simülasyon Efekti */
+@keyframes spinWorld{
+  0%{transform:rotate(0deg);transform-origin:500px 260px;}
+  100%{transform:rotate(360deg);transform-origin:500px 260px;}
+}
+.spinning{animation:spinWorld 2s linear infinite;}
+
+.ov{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;flex-direction:column;gap:18px;background:rgba(6,8,28,.92);padding:20px;text-align:center;backdrop-filter:blur(8px)}
+.ov.on{display:flex}
+.ov .lab{font-size:24px;color:var(--mute);font-weight:bold}
+.duo{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center}
+.slot{min-width:140px;padding:16px 22px;border-radius:20px;font-size:clamp(22px,6vw,38px);font-weight:800;border:3px solid var(--c);background:rgba(255,255,255,.08);animation:pop .6s cubic-bezier(.2,1.6,.4,1);box-shadow:0 0 35px var(--c)}
+@keyframes pop{from{transform:scale(.3) rotate(-10deg)}}
+.conf{position:fixed;top:-20px;width:10px;height:14px;z-index:25;animation:fall linear forwards;pointer-events:none}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+</style>
+</head>
+<body>
+<main>
+  <h1>🌍 Dünya Partisi & Turnuva Gecesi</h1>
+  <p class="sub" id="sub">Avrupa (Dart), Asya (Langırt), Amerika (Beerpong) – Eşleşmeni Bekle!</p>
+  <div class="msg hide" id="err"></div>
+
+  <!-- Giriş Ekranı -->
+  <section id="home" class="home">
+    <button class="choice mod" id="host"><span>🎙️</span>Moderatör Girişi<small>Oda kur, simülasyonu başlat</small></button>
+    <button class="choice" id="toplayer"><span>📱</span>Oyuncu Girişi<small>Oda kodu ile hemen katıl</small></button>
+  </section>
+
+  <!-- Katılım Paneli -->
+  <section id="start" class="panel hide">
+    <h2>Oyuncu Girişi</h2>
+    <input id="jname" maxlength="12" placeholder="Adın / Rumuzun" autocomplete="off">
+    <input id="jcode" maxlength="4" placeholder="4 Haneli Oda Kodu" autocomplete="off" style="text-transform:uppercase;letter-spacing:.3em">
+    <div class="row"><button id="join">Odaya Katıl</button></div>
+    <div class="row"><button class="ghost" id="back">Geri Dön</button></div>
+  </section>
+
+  <!-- Bekleme Odası (Lobby) -->
+  <section id="lobby" class="panel hide">
+    <div id="hostlobby" class="hide">
+      <h2>Oda Kodu</h2>
+      <div class="code" id="code"></div>
+      <p class="sub" id="plcount"></p>
+      <div class="chips" id="plist"></div>
+      <div class="row"><button id="startSim" disabled>🚀 Dünyayı Döndür & Eşleştir</button></div>
+    </div>
+    <div id="playerlobby" class="hide">
+      <h2>Odadasın ✅</h2>
+      <p class="sub">Moderatörün dünyayı döndürüp takımları kurması bekleniyor...</p>
+      <div class="chips" id="plist2"></div>
+    </div>
+  </section>
+
+  <!-- Ana Oyun & Harita Ekranı -->
+  <section id="game" class="hide">
+    <div class="me" id="me"></div>
+    
+    <div class="stage">
+      <svg viewBox="0 0 1000 520" id="map" role="img" aria-label="Dünya Haritası">
+        <defs>
+          <radialGradient id="oc" cx="50%" cy="40%" r="75%"><stop offset="0" stop-color="#1e3a8a"/><stop offset="1" stop-color="#020617"/></radialGradient>
+          <filter id="glow"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <rect width="1000" height="520" fill="url(#oc)"/>
+        <g id="waves"></g>
+        <!-- Harita Grubu (Simülasyonda dönecek alan) -->
+        <g id="earthGroup">
+          <g id="lands"></g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="row hide" id="hostbar">
+      <button id="restartSim">🔄 Simülasyonu Yeniden Çalıştır</button>
+    </div>
+
+    <!-- 3 Kıta ve Oyun Alanları -->
+    <div class="world-grid" id="worldGrid"></div>
+  </section>
+</main>
+
+<!-- Kazanan / Eşleşme Bildirim Kutusu -->
+<div class="ov" id="ov">
+  <div class="lab" id="ovlab"></div>
+  <div class="duo"><div class="slot" id="s1"></div><div style="font-size:30px">VS</div><div class="slot" id="s2"></div></div>
+  <button id="close">Harika, Kapat</button>
+</div>
+
+<script>
+/* 3 Seçilen Kıta ve Oyunları */
+const C=[
+ {n:"Avrupa", e:"🏰", game:"🎯 DART", c:"#4dabf7", x:505, y:112, d:"M450,90 L520,70 L560,95 L550,135 L500,150 L455,140Z"},
+ {n:"Asya", e:"🐉", game:"🏓 LANGIRT", c:"#ff6b6b", x:740, y:130, d:"M565,70 L720,50 L880,80 L900,150 L830,210 L760,230 L700,200 L640,180 L585,150Z"},
+ {n:"Amerika", e:"🦅", game:"🍻 BEERPONG", c:"#51cf66", x:210, y:130, d:"M60,70 L200,40 L300,60 L330,110 L290,170 L260,215 L215,225 L190,190 L140,160 L90,130Z"}
+];
+
+const $=id=>document.getElementById(id);
+const NS="http://www.w3.org/2000/svg";
+
+let isHost=false, S={phase:"lobby",players:[],matches:{0:[],1:[],2:[]},seq:0,simulating:false}, lastSeq=null;
+let peer=null, conn=null, hostConnMap=new Map(), myName="", myPeerId="";
+
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function show(id,on){$(id).classList.toggle("hide",!on)}
+function err(t){$("err").textContent=t;show("err",!!t)}
+
+/* Okyanus Dalgaları ve Kıta Çizimleri */
+for(let i=0;i<5;i++){const p=document.createElementNS(NS,"path");p.setAttribute("class","wave");p.setAttribute("d","M0,"+(50+i*90)+" Q250,"+(20+i*90)+" 500,"+(50+i*90)+" T1000,"+(50+i*90));p.style.stroke="rgba(255,255,255,.08)";p.style.fill="none";p.style.strokeWidth="1.5";$("waves").appendChild(p)}
+
+const lands=C.map((c,i)=>{
+  const g=document.createElementNS(NS,"g");
+  g.setAttribute("class","continent-group");
+  const p=document.createElementNS(NS,"path");p.setAttribute("d",c.d);p.setAttribute("fill",c.c);p.setAttribute("fill-opacity",".85");p.style.filter="url(#glow)";
+  const t=document.createElementNS(NS,"text");t.setAttribute("class","continent-label");t.setAttribute("x",c.x);t.setAttribute("y",c.y);t.textContent=c.e+" "+c.n;
+  g.append(p,t);$("lands").appendChild(g);return {g,p,t};
+});
+
+/* Arayüz Buton Olayları */
+$("toplayer").onclick=()=>{show("home",false);show("start",true)};
+$("back").onclick=()=>{err("");show("start",false);show("home",true)};
+
+$("host").onclick=()=>{
+  isHost=true;
+  const al="ABCDEFGHJKMNPQRSTUVWXYZ23456789";let c="";for(let i=0;i<4;i++)c+=al[Math.floor(Math.random()*al.length)];
+  const roomKey="dunyapartisi-"+c;
+  
+  peer = new Peer(roomKey);
+  peer.on('open', (id)=>{
+    show("home",false);show("start",false);show("lobby",true);show("hostlobby",true);
+    $("code").textContent=c;
+    lobbyRender();
+  });
+  peer.on('error', ()=>{ peer.destroy(); $("host").click(); });
+
+  peer.on('connection', (connection)=>{
+    conn = connection;
+    conn.on('data', (data)=>{
+      if(data.type === 'join'){
+        let name = data.name, pId = conn.peer;
+        hostConnMap.set(pId, conn);
+        if(!S.players.some(p => p[2] === pId)){
+          S.players.push([name, -1, pId]);
+        }
+        broadcastState(); lobbyRender();
+      }
+    });
+    conn.on('close', ()=>{
+      S.players = S.players.filter(p => p[2] !== conn.peer);
+      hostConnMap.delete(conn.peer);
+      broadcastState(); lobbyRender();
+    });
+  });
+};
+
+$("join").onclick=()=>{
+  const n=$("jname").value.trim().slice(0,12), c=$("jcode").value.trim().toUpperCase();
+  if(!n||c.length!==4)return err("Adını ve 4 haneli oda kodunu yaz.");
+  myName = n;
+  const roomKey="dunyapartisi-"+c;
+
+  peer = new Peer();
+  peer.on('open', (id)=>{
+    myPeerId = id;
+    conn = peer.connect(roomKey);
+    conn.on('open', ()=>{
+      show("home",false);show("start",false);show("lobby",true);show("playerlobby",true);err("");
+      conn.send({type:'join', name: myName});
+    });
+    conn.on('data', (st)=>{ applyState(st, true); });
+    conn.on('error', ()=>{ err("Odaya ulaşılamadı. Kodu kontrol et."); });
+  });
+};
+
+function broadcastState(){
+  if(!isHost) return;
+  hostConnMap.forEach((c)=>{ if(c.open) c.send(S); });
+}
+
+function lobbyRender(){
+  const names = S.players.map(p => p[0]);
+  if(isHost){
+    $("plcount").textContent = names.length + " oyuncu bağlandı";
+    chips($("plist"), names);
+    $("startSim").disabled = names.length < 2;
+  } else {
+    chips($("plist2"), names);
+  }
+}
+
+function chips(el,names){
+  el.innerHTML="";
+  names.forEach((n,i)=>{
+    const s=document.createElement("span"); s.className="chip"; s.textContent=n;
+    s.style.animationDelay=(i*.04)+"s"; el.appendChild(s);
+  });
+}
+
+/* --- DÜNYA DÖNME SİMÜLASYONU VE EŞLEŞTİRME MÖNTEMİ --- */
+$("startSim").onclick=()=>runSimulation();
+$("restartSim").onclick=()=>runSimulation();
+
+function runSimulation(){
+  if(S.players.length < 2) return;
+  
+  // 1. Oyuncuları karıştır ve 3 kıtaya eşit şekilde dağıt
+  const shuffled = shuffle(S.players);
+  const assignedPlayers = shuffled.map((p, idx) => {
+    const continentIdx = idx % 3; // 0: Avrupa, 1: Asya, 2: Amerika
+    return [p[0], continentIdx, p[2]];
+  });
+
+  // 2. Her kıta içinde 2'li eşleşmeler oluştur (Kalanlar random atanır veya eşleşir)
+  let matchesByContinent = {0: [], 1: [], 2: []};
+  
+  for(let cId = 0; cId < 3; cId++){
+    let cPlayers = assignedPlayers.filter(p => p[1] === cId);
+    // Eğer o kıtada tek kalan varsa, diğer kıtadan birisiyle eşleştir veya kendi içinde grupla
+    for(let i = 0; i < cPlayers.length - 1; i += 2){
+      matchesByContinent[cId].push([cPlayers[i][0], cPlayers[i+1][0]]);
+    }
+    // Eğer tek kalan (boşta kalan) oyuncu olursa rastgele başka kıtadan biriyle eşleştir
+    if(cPlayers.length % 2 !== 0 && cPlayers.length > 0){
+      let lastOne = cPlayers[cPlayers.length - 1][0];
+      // Havuzdaki ilk müsait oyuncuyla eşle
+      let partner = assignedPlayers.find(p => p[0] !== lastOne);
+      if(partner) matchesByContinent[cId].push([lastOne, partner[0]]);
+    }
+  }
+
+  S = {
+    phase: "play",
+    players: assignedPlayers,
+    matches: matchesByContinent,
+    seq: S.seq + 1,
+    simulating: true
+  };
+  lastSeq = S.seq;
+  applyState(S, false);
+  broadcastState();
+}
+
+function applyState(st, fromNet){
+  S = st;
+  show("start",false); show("lobby",false); show("game",true);
+  
+  // Eğer simülasyon aktifse dünyayı döndür
+  const earth = $("earthGroup");
+  if(st.simulating){
+    earth.classList.add("spinning");
+    // 3 saniye sonra simülasyon durur ve eşleşmeler gösterilir
+    setTimeout(()=>{
+      earth.classList.remove("spinning");
+      if(isHost) { S.simulating = false; broadcastState(); }
+      render();
+      triggerConfetti();
+    }, 3000);
+  } else {
+    earth.classList.remove("spinning");
+    render();
+  }
+}
+
+function render(){
+  show("hostbar", isHost);
+  const myId = isHost ? "host" : myPeerId;
+  const mine = S.players.find(p => p[2] === myId);
+
+  if(isHost){
+    $("me").textContent = "🎙️ Moderatör Paneli - Turnuva Yönetimi";
+  } else if(mine){
+    const kont = C[mine[1]];
+    $("me").textContent = `✨ Kıtan: ${kont.e} ${kont.n} | Oynayacağın Oyun: ${kont.game}`;
+  } else {
+    $("me").textContent = "Oyun devam ediyor...";
+  }
+
+  // 3 Kıta Kartlarını ve Eşleşmeleri Çiz
+  const grid = $("worldGrid"); grid.innerHTML = "";
+  C.forEach((c, ci)=>{
+    const card = document.createElement("div");
+    card.className = "continent-card";
+    card.style.setProperty("--c", c.c);
+    
+    card.innerHTML = `
+      <h3>${c.e} ${c.n} <span class="game-badge">${c.game}</span></h3>
+      <div class="chips" id="c-players-${ci}"></div>
+      <div class="matches-box" id="c-matches-${ci}">
+        <div style="font-size:12px;color:var(--mute);text-align:center;margin-bottom:4px">EŞLEŞMELER</div>
+      </div>
+    `;
+    grid.appendChild(card);
+
+    // O kıtadaki oyuncular
+    const pContainer = card.querySelector(`#c-players-${ci}`);
+    S.players.filter(p => p[1] === ci).forEach(p=>{
+      const chip = document.createElement("span");
+      chip.className = "chip done";
+      chip.style.setProperty("--c", c.c);
+      chip.textContent = p[0];
+      pContainer.appendChild(chip);
+    });
+
+    // O kıtadaki 2'li maç eşleşmeleri
+    const mContainer = card.querySelector(`#c-matches-${ci}`);
+    const matches = S.matches[ci] || [];
+    if(matches.length === 0){
+      const emptyDiv = document.createElement("div");
+      emptyDiv.style.cssText = "text-align:center;font-size:13px;color:var(--mute);padding:6px;";
+      emptyDiv.textContent = S.simulating ? "Dünya dönüyor, eşleşmeler kuruluyor..." : "Eşleşme bulunamadı.";
+      mContainer.appendChild(emptyDiv);
+    } else {
+      matches.forEach(m => {
+        const mDiv = document.createElement("div");
+        mDiv.className = "match-item";
+        mDiv.innerHTML = `<span>⚔️ ${m[0]}</span> <span class="vs">VS</span> <span>${m[1]}</span>`;
+        mContainer.appendChild(mDiv);
+      });
+    }
+  });
+}
+
+function triggerConfetti(){
+  const cols=["#ffd43b","#ff6b6b","#4dabf7","#51cf66","#fff"];
+  for(let i=0;i<50;i++){
+    const d=document.createElement("div"); d.className="conf";
+    d.style.left=Math.random()*100+"vw"; d.style.background=cols[i%5];
+    d.style.animationDuration=(1.5+Math.random()*2)+"s";
+    d.style.animationDelay=Math.random()*.4+"s";
+    document.body.appendChild(d);
+    setTimeout(()=>d.remove(),4000);
+  }
+}
+</script>
+</body>
+</html>
